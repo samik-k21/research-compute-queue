@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/samik-k21/research-compute-queue/internal/api"
 	"github.com/samik-k21/research-compute-queue/internal/config"
 	"github.com/samik-k21/research-compute-queue/internal/database"
 )
@@ -36,12 +37,18 @@ func main() {
 		log.Fatal("Failed to create output directory:", err)
 	}
 
-	// TODO: Initialize API router
-	// TODO: Start scheduler
-	// TODO: Start HTTP server
+	// Set up API router
+	router := api.SetupRouter(db)
 
-	log.Printf("Server starting on port %s", cfg.Port)
-	log.Println("Press Ctrl+C to stop")
+	// Start server in a goroutine
+	go func() {
+		log.Printf("Server starting on port %s", cfg.Port)
+		if err := router.Run(":" + cfg.Port); err != nil {
+			log.Fatal("Failed to start server:", err)
+		}
+	}()
+
+	log.Println("API server is running. Press Ctrl+C to stop")
 
 	// Wait for interrupt signal to gracefully shutdown
 	quit := make(chan os.Signal, 1)
