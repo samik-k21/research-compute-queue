@@ -7,16 +7,21 @@ import (
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/samik-k21/research-compute-queue/internal/auth"
 	"github.com/samik-k21/research-compute-queue/internal/database"
 	"github.com/samik-k21/research-compute-queue/internal/models"
 )
 
 type AuthHandler struct {
-	db *database.DB
+	db         *database.DB
+	jwtManager *auth.JWTManager
 }
 
-func NewAuthHandler(db *database.DB) *AuthHandler {
-	return &AuthHandler{db: db}
+func NewAuthHandler(db *database.DB, jwtManager *auth.JWTManager) *AuthHandler {
+	return &AuthHandler{
+		db:         db,
+		jwtManager: jwtManager,
+	}
 }
 
 // RegisterRequest represents registration data
@@ -76,7 +81,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	})
 }
 
-// Login authenticates a user
+// Login authenticates a user and returns a JWT token
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -107,9 +112,12 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	// TODO: Generate JWT token
-	// For now, return a placeholder token
-	token := "placeholder_token_" + user.Email
+	// Generate JWT token
+	token, err := h.jwtManager.GenerateToken(user.ID, user.Email, user.GroupID, user.IsAdmin)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Login successful",

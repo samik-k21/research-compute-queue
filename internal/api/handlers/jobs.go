@@ -27,21 +27,21 @@ func (h *JobHandler) SubmitJob(c *gin.Context) {
 		return
 	}
 
-	// TODO: Get user ID from JWT token
-	// For now, hardcode user ID 1
-	userID := 1
-
-	// Get user's group ID
-	var groupID int
-	err := h.db.QueryRow("SELECT group_id FROM users WHERE id=$1", userID).Scan(&groupID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user info"})
+	// Get user ID from JWT (stored in context by middleware)
+	userIDInterface, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 		return
 	}
+	userID := userIDInterface.(int)
+
+	// Get group ID from JWT
+	groupIDInterface, _ := c.Get("group_id")
+	groupID := groupIDInterface.(int)
 
 	// Insert job
 	var jobID int
-	err = h.db.QueryRow(`
+	err := h.db.QueryRow(`
 		INSERT INTO jobs (user_id, group_id, script, cpu_cores, memory_gb, gpu_count, 
 		                  estimated_hours, priority, status, submitted_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -53,8 +53,6 @@ func (h *JobHandler) SubmitJob(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create job"})
 		return
 	}
-
-	// TODO: Handle job dependencies if provided
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "Job submitted successfully",

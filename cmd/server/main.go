@@ -7,6 +7,7 @@ import (
 	"syscall"
 
 	"github.com/samik-k21/research-compute-queue/internal/api"
+	"github.com/samik-k21/research-compute-queue/internal/auth"
 	"github.com/samik-k21/research-compute-queue/internal/config"
 	"github.com/samik-k21/research-compute-queue/internal/database"
 )
@@ -29,6 +30,10 @@ func main() {
 
 	log.Println("Database connection established")
 
+	// Initialize JWT manager
+	jwtManager := auth.NewJWTManager(cfg.JWTSecret, cfg.JWTExpiryHours)
+	log.Println("JWT manager initialized")
+
 	// Create necessary directories
 	if err := os.MkdirAll(cfg.LogDirectory, 0755); err != nil {
 		log.Fatal("Failed to create log directory:", err)
@@ -38,7 +43,7 @@ func main() {
 	}
 
 	// Set up API router
-	router := api.SetupRouter(db)
+	router := api.SetupRouter(db, jwtManager)
 
 	// Start server in a goroutine
 	go func() {
@@ -48,7 +53,7 @@ func main() {
 		}
 	}()
 
-	log.Println("API server is running. Press Ctrl+C to stop")
+	log.Println("API server is running with JWT authentication. Press Ctrl+C to stop")
 
 	// Wait for interrupt signal to gracefully shutdown
 	quit := make(chan os.Signal, 1)
